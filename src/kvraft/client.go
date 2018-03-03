@@ -4,7 +4,8 @@ import "labrpc"
 import "crypto/rand"
 import "math/big"
 import "sync/atomic"
-import "fmt"
+import "sync"
+//import "fmt"
 
 
 type Clerk struct {
@@ -12,6 +13,7 @@ type Clerk struct {
 	// You will have to modify this struct.
 
 	//insert code
+	mu sync.Mutex
 	leaderId int
 	clientId int64
 	currentOpId int64
@@ -53,6 +55,8 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 func (ck *Clerk) Get(key string) string {
 
 	// You will have to modify this function.
+	ck.mu.Lock()
+	defer ck.mu.Unlock()
 	var args GetArgs
 	args.Key = key
 	args.ClientId = ck.clientId
@@ -62,16 +66,16 @@ func (ck *Clerk) Get(key string) string {
 		var replyArgs GetReply
 		ck.servers[ck.leaderId].Call("RaftKV.Get",&args,&replyArgs)
 
-		if replyArgs.WrongLeader == false || replyArgs.Err == OK{
-			DPrintf("Success key:value : " + "key:" + replyArgs.Value + "\n")
+		if replyArgs.WrongLeader == false && replyArgs.Err == OK{
+			//fmt.Printf("Success key:value : " + "key:" + replyArgs.Value + "\n")
 			return replyArgs.Value
 		}else{
 			ck.leaderId = (ck.leaderId + 1)% len(ck.servers)
 
 			if replyArgs.WrongLeader == false {
-				DPrintf("Wrong Leader in Clerk.Get value of "    + "\n")
+				//fmt.Printf("Wrong Leader in Clerk.Get value of "    + "\n")
 			}else{
-				DPrintf("Reply Error in Clerk.Get value of "  + " because "  + "\n")
+				//fmt.Printf("Reply Error in Clerk.Get value of "  + " because "  + "\n")
 			}
 
 		}
@@ -92,7 +96,8 @@ func (ck *Clerk) Get(key string) string {
 func (ck *Clerk) PutAppend(key string, value string, op string) {
 	// You will have to modify this function.
 	//insert code
-
+	ck.mu.Lock()
+	defer ck.mu.Unlock()
 	var args PutAppendArgs
 	args.Key = key
 	args.Value = value
@@ -104,8 +109,8 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 		var replyArgs PutAppendReply
 		ck.servers[ck.leaderId].Call("RaftKV.PutAppend",&args,&replyArgs)
 		//fmt.Printf("RaftKV.PutAppend begin !\n")
-		if replyArgs.WrongLeader == false || replyArgs.Err == OK{
-			fmt.Printf("Success !\n")
+		if replyArgs.WrongLeader == false && replyArgs.Err == OK{
+			//fmt.Printf("Success !\n")
 			break;
 		}else{
 			ck.leaderId = (ck.leaderId + 1)% len(ck.servers)

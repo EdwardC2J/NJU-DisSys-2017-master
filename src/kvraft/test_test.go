@@ -64,7 +64,7 @@ func checkClntAppends(t *testing.T, clnt int, v string, count int) {
 		}
 		off1 := strings.LastIndex(v, wanted)
 		if off1 != off {
-			fmt.Printf("off1 %v off %v\n", off1, off)
+			//fmt.Printf("off1 %v off %v\n", off1, off)
 			t.Fatalf("duplicate element %v in Append result", wanted)
 		}
 		if off <= lastoff {
@@ -130,12 +130,12 @@ func partitioner(t *testing.T, cfg *config, ch chan bool, done *int32) {
 // size) shouldn't exceed 2*maxraftstate.
 func GenericTest(t *testing.T, tag string, nclients int, unreliable bool, crash bool, partitions bool, maxraftstate int) {
 	const nservers = 5
-	fmt.Printf("Start GenericTest !\n")
+	//fmt.Printf("Start GenericTest !\n")
 	cfg := make_config(t, tag, nservers, unreliable, maxraftstate)
 	defer cfg.cleanup()
-	fmt.Printf("Config finished !\n")
+	//fmt.Printf("Config finished !\n")
 	ck := cfg.makeClient(cfg.All())
-	fmt.Printf("Client finished !\n")
+	//fmt.Printf("Client finished !\n")
 	done_partitioner := int32(0)
 	done_clients := int32(0)
 	ch_partitioner := make(chan bool)
@@ -145,7 +145,7 @@ func GenericTest(t *testing.T, tag string, nclients int, unreliable bool, crash 
 	}
 	for i := 0; i < 3; i++ {
 
-		log.Printf("Iteration %v\n", i)
+		//log.Printf("Iteration %v\n", i)
 		atomic.StoreInt32(&done_clients, 0)
 		atomic.StoreInt32(&done_partitioner, 0)
 		go spawn_clients_and_wait(t, cfg, nclients, func(cli int, myck *Clerk, t *testing.T) {
@@ -155,7 +155,7 @@ func GenericTest(t *testing.T, tag string, nclients int, unreliable bool, crash 
 			}()
 			last := ""
 			key := strconv.Itoa(cli)
-			fmt.Printf("key :"  +key)
+			//fmt.Printf("key :"  +key)
 			myck.Put(key, last)
 
 
@@ -164,13 +164,13 @@ func GenericTest(t *testing.T, tag string, nclients int, unreliable bool, crash 
 					nv := "x " + strconv.Itoa(cli) + " " + strconv.Itoa(j) + " y"
 					// log.Printf("%d: client new append %v\n", cli, nv)
 
-					fmt.Printf("Begin, wanted:\n%v\n, got\n%v\n",  last, nv)
+					//fmt.Printf("Begin, wanted:\n%v\n, got\n%v\n",  last, nv)
 					myck.Append(key, nv)
 					last = NextValue(last, nv)
-					fmt.Printf("last:\n%v\n,",  last)
+					//fmt.Printf("last:\n%v\n,",  last)
 					j++
 				} else {
-					 log.Printf("%d: client new get %v\n", cli, key)
+					 //log.Printf("%d: client new get %v\n", cli, key)
 
 					v := myck.Get(key)
 					if v != last {
@@ -222,15 +222,15 @@ func GenericTest(t *testing.T, tag string, nclients int, unreliable bool, crash 
 			cfg.ConnectAll()
 		}
 
-		log.Printf("wait for clients\n")
+		//log.Printf("wait for clients\n")
 		for i := 0; i < nclients; i++ {
-			 log.Printf("read from clients %d\n", i)
+			 //log.Printf("read from clients %d\n", i)
 			j := <-clnts[i]
 			if j < 10 {
-				log.Printf("Warning: client %d managed to perform only %d put operations in 1 sec?\n", i, j)
+				//log.Printf("Warning: client %d managed to perform only %d put operations in 1 sec?\n", i, j)
 			}
 			key := strconv.Itoa(i)
-			 log.Printf("Check %v for client %d\n", j, i)
+			 //log.Printf("Check %v for client %d\n", j, i)
 			v := ck.Get(key)
 			checkClntAppends(t, i, v, j)
 		}
@@ -243,7 +243,7 @@ func GenericTest(t *testing.T, tag string, nclients int, unreliable bool, crash 
 			}
 		}
 
-		log.Printf("Iteration finished %v\n", i)
+		//log.Printf("Iteration finished %v\n", i)
 
 	}
 
@@ -259,6 +259,8 @@ func TestBasic(t *testing.T) {
 func TestConcurrent(t *testing.T) {
 	fmt.Printf("Test: concurrent clients ...\n")
 	GenericTest(t, "concur", 5, false, false, false, -1)
+	fmt.Printf("---------------------------------------------------------------\n")
+
 }
 
 func TestUnreliable(t *testing.T) {

@@ -7,7 +7,7 @@ import (
 	"raft"
 	"sync"
 	"time"
-	"fmt"
+	//"fmt"
 
 )
 
@@ -49,6 +49,7 @@ type RaftKV struct {
 	maxraftstate int // snapshot if log grows this big
 
 	// Your definitions here.
+	persister  *raft.Persister
 	data       map[string]string
 	waitingOps map[int][]*WOp
 	op_id   map[int64]int64
@@ -97,7 +98,7 @@ func (kv *RaftKV) PutAppend(args *PutAppendArgs, reply *PutAppendReply) {
 	}else if args.Op == Append{
 		op.Type = AppendType
 	}else{
-		fmt.Printf("Wrong PutAppendArgs op")
+		//fmt.Printf("Wrong PutAppendArgs op")
 	}
 
 	reply.WrongLeader = kv.Operate(op)
@@ -120,7 +121,7 @@ func (kv *RaftKV) Operate(op Op)bool{
 	}
 
 	result := make(chan bool, 1)
-  fmt.Printf("Append to watingOps index:%v  op:%v\n", index, op.Value)
+  //fmt.Printf("Append to watingOps index:%v  op:%v\n", index, op.Value)
   kv.mu.Lock()
   kv.waitingOps[index] = append(kv.waitingOps[index], &WOp{flag: result, op: &op})
   kv.mu.Unlock()
@@ -130,12 +131,14 @@ func (kv *RaftKV) Operate(op Op)bool{
   select {
 	case ok = <-result:
   case <-timer.C:
-        fmt.Printf("Wait operation apply to state machine exceeds timeout....\n")
+        //fmt.Printf("Wait operation apply to state machine exceeds timeout....\n")
         ok = false
   }
+	kv.mu.Lock()
   delete(kv.waitingOps, index)
+	kv.mu.Unlock()
   if !ok {
-        fmt.Printf("Wrong leader\n")
+        //fmt.Printf("Wrong leader\n")
         return true
     }
   return false
@@ -163,14 +166,14 @@ func (kv *RaftKV) Handle(msg *raft.ApplyMsg){
 	args = msg.Command.(Op)
 
 	if kv.op_id[args.Client] >= args.Id {
-    DPrintf("Done operation before\n")
+    //fmt.Printf("Done operation before\n")
   } else {
         switch args.Type {
         case PutType:
-            fmt.Printf("Put Key/Value %v/%v\n", args.Key, args.Value)
+            //fmt.Printf("Put Key/Value %v/%v\n", args.Key, args.Value)
             kv.data[args.Key] = args.Value
         case AppendType:
-            fmt.Printf("Append Key/Value %v/%v\n", args.Key, args.Value)
+            //fmt.Printf("Append Key/Value %v/%v\n", args.Key, args.Value)
             kv.data[args.Key] = kv.data[args.Key] + args.Value
         default:
         }
@@ -179,10 +182,10 @@ func (kv *RaftKV) Handle(msg *raft.ApplyMsg){
 
     for _, wop := range kv.waitingOps[msg.Index] {
         if wop.op.Client == args.Client && wop.op.Id == args.Id {
-            DPrintf("Client:%v %v, Id:%v %v", wop.op.Client, args.Client, wop.op.Id, args.Id)
+            //fmt.Printf("Client:%v %v, Id:%v %v", wop.op.Client, args.Client, wop.op.Id, args.Id)
             wop.flag <- true
         } else {
-            DPrintf("Client:%v %v, Id:%v %v", wop.op.Client, args.Client, wop.op.Id, args.Id)
+            //fmt.Printf("Client:%v %v, Id:%v %v", wop.op.Client, args.Client, wop.op.Id, args.Id)
             wop.flag <- false
         }
     }
@@ -210,7 +213,7 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	kv := new(RaftKV)
 	kv.me = me
 	kv.maxraftstate = maxraftstate
-
+	kv.persister = persister
 	// Your initialization code here.
 
 	kv.applyCh = make(chan raft.ApplyMsg)
@@ -225,7 +228,9 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	go func() {//处理接收到的消息
         for msg := range kv.applyCh {
 						//fmt.Printf("Get message !\n")
+						//kv.mu.Lock()
             kv.Handle(&msg)
+						//kv.mu.Unlock()
         }
   }()
 
