@@ -130,11 +130,12 @@ func partitioner(t *testing.T, cfg *config, ch chan bool, done *int32) {
 // size) shouldn't exceed 2*maxraftstate.
 func GenericTest(t *testing.T, tag string, nclients int, unreliable bool, crash bool, partitions bool, maxraftstate int) {
 	const nservers = 5
+	fmt.Printf("Start GenericTest !\n")
 	cfg := make_config(t, tag, nservers, unreliable, maxraftstate)
 	defer cfg.cleanup()
-
+	fmt.Printf("Config finished !\n")
 	ck := cfg.makeClient(cfg.All())
-
+	fmt.Printf("Client finished !\n")
 	done_partitioner := int32(0)
 	done_clients := int32(0)
 	ch_partitioner := make(chan bool)
@@ -143,7 +144,8 @@ func GenericTest(t *testing.T, tag string, nclients int, unreliable bool, crash 
 		clnts[i] = make(chan int)
 	}
 	for i := 0; i < 3; i++ {
-		// log.Printf("Iteration %v\n", i)
+
+		log.Printf("Iteration %v\n", i)
 		atomic.StoreInt32(&done_clients, 0)
 		atomic.StoreInt32(&done_partitioner, 0)
 		go spawn_clients_and_wait(t, cfg, nclients, func(cli int, myck *Clerk, t *testing.T) {
@@ -153,29 +155,40 @@ func GenericTest(t *testing.T, tag string, nclients int, unreliable bool, crash 
 			}()
 			last := ""
 			key := strconv.Itoa(cli)
+			fmt.Printf("key :"  +key)
 			myck.Put(key, last)
+
+
 			for atomic.LoadInt32(&done_clients) == 0 {
 				if (rand.Int() % 1000) < 500 {
 					nv := "x " + strconv.Itoa(cli) + " " + strconv.Itoa(j) + " y"
 					// log.Printf("%d: client new append %v\n", cli, nv)
+
+					fmt.Printf("Begin, wanted:\n%v\n, got\n%v\n",  last, nv)
 					myck.Append(key, nv)
 					last = NextValue(last, nv)
+					fmt.Printf("last:\n%v\n,",  last)
 					j++
 				} else {
-					// log.Printf("%d: client new get %v\n", cli, key)
+					 log.Printf("%d: client new get %v\n", cli, key)
+
 					v := myck.Get(key)
 					if v != last {
 						log.Fatalf("get wrong value, key %v, wanted:\n%v\n, got\n%v\n", key, last, v)
 					}
+
+					//fmt.Printf("get right value, key %v, wanted:\n%v\n, got\n%v\n", key, last, v)
 				}
 			}
 		})
 
 		if partitions {
+
 			// Allow the clients to perform some operations without interruption
 			time.Sleep(1 * time.Second)
 			go partitioner(t, cfg, ch_partitioner, &done_partitioner)
 		}
+
 		time.Sleep(5 * time.Second)
 
 		atomic.StoreInt32(&done_clients, 1)     // tell clients to quit
@@ -209,15 +222,15 @@ func GenericTest(t *testing.T, tag string, nclients int, unreliable bool, crash 
 			cfg.ConnectAll()
 		}
 
-		// log.Printf("wait for clients\n")
+		log.Printf("wait for clients\n")
 		for i := 0; i < nclients; i++ {
-			// log.Printf("read from clients %d\n", i)
+			 log.Printf("read from clients %d\n", i)
 			j := <-clnts[i]
 			if j < 10 {
 				log.Printf("Warning: client %d managed to perform only %d put operations in 1 sec?\n", i, j)
 			}
 			key := strconv.Itoa(i)
-			// log.Printf("Check %v for client %d\n", j, i)
+			 log.Printf("Check %v for client %d\n", j, i)
 			v := ck.Get(key)
 			checkClntAppends(t, i, v, j)
 		}
@@ -229,6 +242,9 @@ func GenericTest(t *testing.T, tag string, nclients int, unreliable bool, crash 
 				t.Fatalf("logs were not trimmed (%v > 2*%v)", cfg.LogSize(), maxraftstate)
 			}
 		}
+
+		log.Printf("Iteration finished %v\n", i)
+
 	}
 
 	fmt.Printf("  ... Passed\n")
@@ -237,6 +253,7 @@ func GenericTest(t *testing.T, tag string, nclients int, unreliable bool, crash 
 func TestBasic(t *testing.T) {
 	fmt.Printf("Test: One client ...\n")
 	GenericTest(t, "basic", 1, false, false, false, -1)
+	fmt.Printf("---------------------------------------------------------------\n")
 }
 
 func TestConcurrent(t *testing.T) {
@@ -393,5 +410,3 @@ func TestPersistPartitionUnreliable(t *testing.T) {
 	fmt.Printf("Test: persistence with concurrent clients and repartitioning servers, unreliable...\n")
 	GenericTest(t, "persistpartunreliable", 5, true, true, true, -1)
 }
-
-

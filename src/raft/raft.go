@@ -143,6 +143,7 @@ type Raft struct {
 
 func (rf *Raft) restartTime() {
 
+
 	randst := ElectionMinTime+rand.Int63n(ElectionMaxTime-ElectionMinTime)
 	timeout := time.Millisecond * time.Duration(randst)
 	if rf.state == "LEADER" {
@@ -154,6 +155,7 @@ func (rf *Raft) restartTime() {
 		go func() {
 			for {
 				<-rf.timer.C
+
 				rf.Timeout()
 			}
 		}()
@@ -328,6 +330,7 @@ func (rf *Raft) AppendEntries(args AppendEntryArgs, reply *AppendEntryReply) {
 		reply.Term = rf.currentTerm
 		//fmt.Printf("\nAppendEntries:args.Term < rf.currentTerm ")
 	} else {
+
 		rf.state = "FOLLOWER"
 		rf.currentTerm = args.Term
 		rf.votedFor = -1
@@ -348,6 +351,7 @@ func (rf *Raft) AppendEntries(args AppendEntryArgs, reply *AppendEntryReply) {
 			reply.CommitIndex = index
 			reply.Success = false
 		}else if args.Entries != nil {
+
 			rf.logs = rf.logs[:args.PrevLogIndex+1]
 			rf.logs = append(rf.logs, args.Entries...)
 			if len(rf.logs)-1 >= args.LeaderCommit {
@@ -378,6 +382,7 @@ func (rf *Raft) commit() {
 
 	i := rf.lastApplied + 1
 	for i <= rf.commitIndex{
+
 		var args ApplyMsg
 		args.Index = i+1
 		args.Command = rf.logs[i].Command
@@ -393,6 +398,7 @@ func (rf *Raft) commit() {
 // send appendetries to all follwer
 //
 func (rf *Raft) SendAppendEntries() {
+
 	//fmt.Printf("\nSendAppendEntries: "+strconv.Itoa(rf.me))
 	for i := 0; i < len(rf.peers); i++ {
 		if i == rf.me {
@@ -499,6 +505,7 @@ func (rf *Raft) Start(command interface{}) (int, int, bool) {
 	term := -1
 	isLeader := false
 
+	//fmt.Printf("\ntimeout: "+strconv.Itoa(rf.me)+" "+rf.state)
 	if rf.state !="LEADER"{
 		return index, term, isLeader
 	}
@@ -530,9 +537,10 @@ func (rf *Raft) Kill() {
 // when peer timeout, it changes to be a candidate and sendRequwstVote.
 //
 func (rf *Raft) Timeout() {
+
 	rf.mu.Lock()
 	defer rf.mu.Unlock()
-	//fmt.Printf("\ntimeout: "+strconv.Itoa(rf.me)+" "+rf.state)
+
 	if rf.state != "LEADER" {
 		rf.state = "CANDIDATE"
 		//fmt.Printf("\ncandidate:" +strconv.Itoa(rf.me))

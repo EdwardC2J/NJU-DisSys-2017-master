@@ -3,11 +3,19 @@ package raftkv
 import "labrpc"
 import "crypto/rand"
 import "math/big"
+import "sync/atomic"
+import "fmt"
 
 
 type Clerk struct {
 	servers []*labrpc.ClientEnd
 	// You will have to modify this struct.
+
+	//insert code
+	leaderId int
+	clientId int64
+	currentOpId int64
+
 }
 
 func nrand() int64 {
@@ -21,6 +29,12 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 	ck := new(Clerk)
 	ck.servers = servers
 	// You'll have to add code here.
+
+	//insert code
+	ck.leaderId = 0
+	ck.currentOpId = 0
+	ck.clientId = nrand()
+
 	return ck
 }
 
@@ -39,6 +53,29 @@ func MakeClerk(servers []*labrpc.ClientEnd) *Clerk {
 func (ck *Clerk) Get(key string) string {
 
 	// You will have to modify this function.
+	var args GetArgs
+	args.Key = key
+	args.ClientId = ck.clientId
+	args.Id = atomic.AddInt64(&ck.currentOpId, 1)
+
+	for{
+		var replyArgs GetReply
+		ck.servers[ck.leaderId].Call("RaftKV.Get",&args,&replyArgs)
+
+		if replyArgs.WrongLeader == false || replyArgs.Err == OK{
+			DPrintf("Success key:value : " + "key:" + replyArgs.Value + "\n")
+			return replyArgs.Value
+		}else{
+			ck.leaderId = (ck.leaderId + 1)% len(ck.servers)
+
+			if replyArgs.WrongLeader == false {
+				DPrintf("Wrong Leader in Clerk.Get value of "    + "\n")
+			}else{
+				DPrintf("Reply Error in Clerk.Get value of "  + " because "  + "\n")
+			}
+
+		}
+	}
 	return ""
 }
 
@@ -54,11 +91,46 @@ func (ck *Clerk) Get(key string) string {
 //
 func (ck *Clerk) PutAppend(key string, value string, op string) {
 	// You will have to modify this function.
+	//insert code
+
+	var args PutAppendArgs
+	args.Key = key
+	args.Value = value
+	args.Op = op
+	args.ClientId = ck.clientId
+	args.Id = atomic.AddInt64(&ck.currentOpId, 1)
+
+	for{
+		var replyArgs PutAppendReply
+		ck.servers[ck.leaderId].Call("RaftKV.PutAppend",&args,&replyArgs)
+		//fmt.Printf("RaftKV.PutAppend begin !\n")
+		if replyArgs.WrongLeader == false || replyArgs.Err == OK{
+			fmt.Printf("Success !\n")
+			break;
+		}else{
+			ck.leaderId = (ck.leaderId + 1)% len(ck.servers)
+
+			if replyArgs.WrongLeader == false {
+				//fmt.Printf("Wrong Leader in Clerk.PutAppend to " + op + "\n")
+			}else{
+				//fmt.Printf("Reply Error in Clerk.PutAppend to " + op + " because "+"\n")
+			}
+
+		}
+	}
+	//fmt.Printf("Clerk PutAppend FINISHED !\n")
+
+
+
+
 }
 
 func (ck *Clerk) Put(key string, value string) {
+
+	//fmt.Printf("Clerk Put begin !\n")
 	ck.PutAppend(key, value, "Put")
 }
 func (ck *Clerk) Append(key string, value string) {
+	//fmt.Printf("Clerk Append begin !\n")
 	ck.PutAppend(key, value, "Append")
 }
