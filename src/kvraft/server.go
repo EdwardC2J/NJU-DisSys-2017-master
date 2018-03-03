@@ -51,7 +51,7 @@ type RaftKV struct {
 	// Your definitions here.
 	persister  *raft.Persister
 	data       map[string]string
-	waitingOps map[int][]*WOp
+	waitingOps map[int]*WOp
 	op_id   map[int64]int64
 }
 
@@ -123,7 +123,7 @@ func (kv *RaftKV) Operate(op Op)bool{
 	result := make(chan bool, 1)
   //fmt.Printf("Append to watingOps index:%v  op:%v\n", index, op.Value)
   kv.mu.Lock()
-  kv.waitingOps[index] = append(kv.waitingOps[index], &WOp{flag: result, op: &op})
+  kv.waitingOps[index] = &WOp{flag: result, op: &op}//append(kv.waitingOps[index], &WOp{flag: result, op: &op})
   kv.mu.Unlock()
 
   var ok bool
@@ -179,7 +179,7 @@ func (kv *RaftKV) Handle(msg *raft.ApplyMsg){
         }
         kv.op_id[args.Client] = args.Id
     }
-
+		/*
     for _, wop := range kv.waitingOps[msg.Index] {
         if wop.op.Client == args.Client && wop.op.Id == args.Id {
             //fmt.Printf("Client:%v %v, Id:%v %v", wop.op.Client, args.Client, wop.op.Id, args.Id)
@@ -189,6 +189,18 @@ func (kv *RaftKV) Handle(msg *raft.ApplyMsg){
             wop.flag <- false
         }
     }
+		*/
+		wop :=  kv.waitingOps[msg.Index]
+		if wop != nil{
+			if wop.op.Client == args.Client && wop.op.Id == args.Id {
+					//fmt.Printf("Client:%v %v, Id:%v %v", wop.op.Client, args.Client, wop.op.Id, args.Id)
+					wop.flag <- true
+			} else {
+					//fmt.Printf("Client:%v %v, Id:%v %v", wop.op.Client, args.Client, wop.op.Id, args.Id)
+					wop.flag <- false
+			}
+		}
+
 
 }
 
@@ -222,7 +234,7 @@ func StartKVServer(servers []*labrpc.ClientEnd, me int, persister *raft.Persiste
 	//insert code
 	//初始化
 	kv.data = make(map[string]string)
-	kv.waitingOps = make(map[int][]*WOp)
+	kv.waitingOps = make(map[int]*WOp)
 	kv.op_id = make(map[int64]int64)
 
 	go func() {//处理接收到的消息
