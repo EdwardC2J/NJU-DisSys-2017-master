@@ -67,7 +67,6 @@ func (ck *Clerk) Get(key string) string {
 		ck.servers[ck.leaderId].Call("RaftKV.Get",&args,&replyArgs)
 
 		if replyArgs.WrongLeader == false && replyArgs.Err == OK{
-			//fmt.Printf("Success key:value : " + "key:" + replyArgs.Value + "\n")
 			return replyArgs.Value
 		}else{
 			ck.leaderId = (ck.leaderId + 1)% len(ck.servers)
@@ -108,9 +107,7 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 	for{
 		var replyArgs PutAppendReply
 		ck.servers[ck.leaderId].Call("RaftKV.PutAppend",&args,&replyArgs)
-		//fmt.Printf("RaftKV.PutAppend begin !\n")
 		if replyArgs.WrongLeader == false && replyArgs.Err == OK{
-			//fmt.Printf("Success !\n")
 			break;
 		}else{
 			ck.leaderId = (ck.leaderId + 1)% len(ck.servers)
@@ -123,8 +120,6 @@ func (ck *Clerk) PutAppend(key string, value string, op string) {
 
 		}
 	}
-	//fmt.Printf("Clerk PutAppend FINISHED !\n")
-
 
 
 

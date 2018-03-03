@@ -253,14 +253,11 @@ func GenericTest(t *testing.T, tag string, nclients int, unreliable bool, crash 
 func TestBasic(t *testing.T) {
 	fmt.Printf("Test: One client ...\n")
 	GenericTest(t, "basic", 1, false, false, false, -1)
-	fmt.Printf("---------------------------------------------------------------\n")
 }
 
 func TestConcurrent(t *testing.T) {
 	fmt.Printf("Test: concurrent clients ...\n")
 	GenericTest(t, "concur", 5, false, false, false, -1)
-	fmt.Printf("---------------------------------------------------------------\n")
-
 }
 
 func TestUnreliable(t *testing.T) {
