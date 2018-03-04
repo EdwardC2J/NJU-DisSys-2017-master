@@ -9,7 +9,7 @@ const (
 	PutType  = 0
 	AppendType = 1
 	GetType = 2
-	
+
 )
 
 type Err string

@@ -129,7 +129,7 @@ func (kv *RaftKV) Operate(op Op)bool{
   select {
 	case ok = <-result:
   case <-timer.C:
-        //fmt.Printf("Wait operation apply to state machine exceeds timeout....\n")
+        //fmt.Printf("timeout....\n")
         ok = false
   }
 	kv.mu.Lock()
